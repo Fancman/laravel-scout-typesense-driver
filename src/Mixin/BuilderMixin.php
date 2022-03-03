@@ -61,6 +61,28 @@ class BuilderMixin
         };
     }
 
+	public function compareBy(): Closure
+    {
+        return function (array|string $compareBy) {
+            $compareBy = is_array($compareBy) ? $compareBy : func_get_args();
+            $this->engine()
+                 ->compareBy($compareBy);
+
+            return $this;
+        };
+    }
+
+	public function facetBy(): Closure
+    {
+        return function (array|string $facetBy) {
+            $facetBy = is_array($facetBy) ? $facetBy : func_get_args();
+            $this->engine()
+                 ->facetBy($facetBy);
+
+            return $this;
+        };
+    }
+
     /**
      * @param int $groupByLimit
      *

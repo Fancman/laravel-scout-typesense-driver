@@ -32,6 +32,16 @@ class TypesenseEngine extends Engine
      */
     private array $groupBy = [];
 
+	/**
+     * @var array
+     */
+    private array $facetBy = [];
+
+	/**
+     * @var array
+     */
+	private array $compareBy = [];
+
     /**
      * @var int
      */
@@ -150,6 +160,14 @@ class TypesenseEngine extends Engine
             'highlight_end_tag'   => $this->endTag,
         ];
 
+		if (!empty($this->compareBy)) {
+			if(strlen($params['filter_by'])){
+				$params['filter_by'] .= " " . $this->parseComparison($this->compareBy);
+			}else{
+				$params['filter_by'] .= $this->parseComparison($this->compareBy);
+			}
+		}
+
         if ($this->limitHits > 0) {
             $params['limit_hits'] = $this->limitHits;
         }
@@ -157,6 +175,10 @@ class TypesenseEngine extends Engine
         if (!empty($this->groupBy)) {
             $params['group_by'] = implode(',', $this->groupBy);
             $params['group_limit'] = $this->groupByLimit;
+        }
+
+		if (!empty($this->facetBy)) {
+            $params['facet_by'] = implode(',', $this->facetBy);
         }
 
         if (!empty($this->locationOrderBy)) {
@@ -171,6 +193,8 @@ class TypesenseEngine extends Engine
             }
             $params['sort_by'] .= $this->parseOrderBy($builder->orders);
         }
+
+		//dd($params);
 
         return $params;
     }
@@ -211,6 +235,17 @@ class TypesenseEngine extends Engine
         return implode(',', $sortByArr);
     }
 
+	private function parseComparison(array $comparisons): string
+    {
+        $compareArr = [];
+
+        foreach ($comparisons as $comparison) {
+            $compareArr[] = $comparison['key']." ".$comparison['operator']." ".$comparison['value'];
+        }
+
+        return implode(' && ', $compareArr);
+    }
+
     /**
      * @param \Laravel\Scout\Builder $builder
      * @param array                  $options
@@ -240,13 +275,19 @@ class TypesenseEngine extends Engine
      */
     protected function filters(Builder $builder): string
     {
-        return collect($builder->wheres)
+        $attr = collect($builder->wheres)
           ->map([
               $this,
               'parseFilters',
           ])
           ->values()
           ->implode(' && ');
+
+		//dd($builder->wheres);
+
+		//dd($attr);
+
+		return $attr;
     }
 
     /**
@@ -260,8 +301,10 @@ class TypesenseEngine extends Engine
     public function parseFilters(array|string $value, string $key): string
     {
         if (is_array($value)) {
-            return sprintf('%s:%s', $key, implode('', $value));
+            return sprintf('%s:%s', $key, json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
+
+		//dd($key, $value);
 
         return sprintf('%s:=%s', $key, $value);
     }
@@ -393,6 +436,20 @@ class TypesenseEngine extends Engine
     public function groupBy(array $groupBy): static
     {
         $this->groupBy = $groupBy;
+
+        return $this;
+    }
+
+	public function compareBy(array $compareBy): static
+    {
+        $this->compareBy = $compareBy;
+
+        return $this;
+    }
+
+	public function facetBy(array $facetBy): static
+    {
+        $this->facetBy = $facetBy;
 
         return $this;
     }
